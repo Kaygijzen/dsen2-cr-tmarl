@@ -29,7 +29,7 @@ def get_train_val_test_filelists(listpath):
     val_filelist = []
     test_filelist = []
     for f in filelist:
-        line_entries = f[0].split(sep=", ")
+        line_entries = f
         if line_entries[0] == '1':
             train_filelist.append(line_entries)
         if line_entries[0] == '2':
@@ -226,7 +226,8 @@ class DataGenerator(keras.utils.Sequence):
                  input_data_folder='./',
                  use_cloud_mask=True,
                  max_val_sar=5,
-                 cloud_threshold=0.2
+                 cloud_threshold=0.2,
+                 use_twin_mask=False # CONTRIBUTION: ability to use twin masks
                  ):
 
         if clip_min is None:
@@ -251,6 +252,7 @@ class DataGenerator(keras.utils.Sequence):
         self.input_data_folder = input_data_folder
         self.use_cloud_mask = use_cloud_mask
         self.cloud_threshold = cloud_threshold
+        self.use_twin_mask = use_twin_mask
 
         self.augment_rotation_param = np.repeat(0, self.nr_images)
         self.augment_flip_param = np.repeat(0, self.nr_images)
@@ -277,7 +279,7 @@ class DataGenerator(keras.utils.Sequence):
             # Generate data
             X, y = self.__data_generation(list_IDs_temp, self.augment_rotation_param[indexes],
                                           self.augment_flip_param[indexes], self.random_crop_paramx[indexes],
-                                          self.random_crop_paramy[indexes])
+                                          self.random_crop_paramy[indexes], self.use_twin_mask)
             return X, y
         else:
             X = self.__data_generation(list_IDs_temp, self.augment_rotation_param[indexes],
@@ -301,11 +303,11 @@ class DataGenerator(keras.utils.Sequence):
         return
 
     def __data_generation(self, list_IDs_temp, augment_rotation_param_temp, augment_flip_param_temp,
-                          random_crop_paramx_temp, random_crop_paramy_temp):
+                          random_crop_paramx_temp, random_crop_paramy_temp, use_twin_mask=False):
 
         input_opt_batch, cloud_mask_batch = self.get_batch(list_IDs_temp, augment_rotation_param_temp,
                                                            augment_flip_param_temp, random_crop_paramx_temp,
-                                                           random_crop_paramy_temp, data_type=3)
+                                                           random_crop_paramy_temp, data_type=3, use_twin_mask=use_twin_mask)
 
         input_sar_batch = self.get_batch(list_IDs_temp, augment_rotation_param_temp, augment_flip_param_temp,
                                          random_crop_paramx_temp, random_crop_paramy_temp, data_type=1)
@@ -392,18 +394,20 @@ class DataGenerator(keras.utils.Sequence):
         return data_image
 
     def get_batch(self, list_IDs_temp, augment_rotation_param_temp, augment_flip_param_temp, random_crop_paramx_temp,
-                  random_crop_paramy_temp, data_type):
-
+                  random_crop_paramy_temp, data_type, use_twin_mask=False):
         if data_type == 1:
             dim = self.input_dim[1]
         else:
             dim = self.input_dim[0]
 
         batch = np.empty((self.batch_size, *dim)).astype('float32')
-        cloud_mask_batch = np.empty((self.batch_size, self.input_dim[0][1], self.input_dim[0][2])).astype('float32')
 
+        if use_twin_mask: # ADDITION: create empty array
+            cloud_mask_batch = np.empty((self.batch_size, 3, self.input_dim[0][1], self.input_dim[0][2])).astype('float32')
+        else:
+            cloud_mask_batch = np.empty((self.batch_size, self.input_dim[0][1], self.input_dim[0][2])).astype('float32')
+        
         for i, ID in enumerate(list_IDs_temp):
-
             data_image = self.get_data_image(ID, data_type, random_crop_paramx_temp[i], random_crop_paramy_temp[i])
             if self.data_augmentation:
                 if not augment_flip_param_temp[i] == 0:
@@ -413,14 +417,28 @@ class DataGenerator(keras.utils.Sequence):
 
             if data_type == 3 and self.use_cloud_mask:
                 cloud_mask = get_cloud_cloudshadow_mask(data_image, self.cloud_threshold)
-                cloud_mask[cloud_mask != 0] = 1
-                cloud_mask_batch[i,] = cloud_mask
+
+                if use_twin_mask: # ADDITION: split the masks
+                    # Cloud mask
+                    c_mask = (cloud_mask == 1).astype(int)
+                    # Shadow mask
+                    s_mask = (cloud_mask == -1).astype(int)
+                    # Merged cloud shadow mask, needed for metrics
+                    cs_mask = c_mask | s_mask 
+
+                    cloud_mask_batch[i,0,] = c_mask
+                    cloud_mask_batch[i,1,] = s_mask
+                    cloud_mask_batch[i,2,] = cs_mask
+                else:
+                    cloud_mask[cloud_mask != 0] = 1
+                    cloud_mask_batch[i,] = cloud_mask
 
             data_image = self.get_normalized_data(data_image, data_type)
 
             batch[i,] = data_image
 
-        cloud_mask_batch = cloud_mask_batch[:, np.newaxis, :, :]
+        if not use_twin_mask: # CONTRIBUTION: when not using TMARL, add an axis
+            cloud_mask_batch = cloud_mask_batch[:, np.newaxis, :, :]
 
         if data_type == 3:
             return batch, cloud_mask_batch

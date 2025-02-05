@@ -36,6 +36,16 @@ def run_dsen2cr(predict_file=None, resume_file=None):
     use_cloud_mask = True
     cloud_threshold = 0.2  # set threshold for binarisation of cloud mask
 
+    # CONTRIBUTION: tmarl loss function (note: use_cloud_mask should be set to True)
+    use_tmarl = True 
+
+    # CONTRIBUTION: TMARL takes parameters alpha and lambda
+    # relative weight for the cloud and cloud-shadow regions:
+    #   - alpha < 0.5 -> cloud-shadow regions are prioritized
+    #   - alpha > 0.5 -> cloud regions are prioritized
+    tmarl_alpha = 0.8
+    tmarl_lambda = 1 # weight for the regularization term
+
     # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Setup data processing param %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
     # input data preprocessing parameters
@@ -73,6 +83,10 @@ def run_dsen2cr(predict_file=None, resume_file=None):
                img_met.cloud_mean_absolute_error_covered, img_met.cloud_ssim,
                img_met.cloud_mean_sam_covered, img_met.cloud_mean_sam_clear]
 
+    if use_tmarl: # CONTRIBUTION: use the TMARL as loss function, and add it to metrics
+        loss = lambda y1, y2: img_met.tmarl_error(y1, y2, alpha=tmarl_alpha, r_lambda=tmarl_lambda)
+        metrics.append(img_met.tmarl_error)
+
     # define learning rate
     lr = 7e-5
 
@@ -85,7 +99,7 @@ def run_dsen2cr(predict_file=None, resume_file=None):
 
     log_step_freq = 1  # frequency of logging
 
-    n_gpus = 1  # set number of GPUs
+    n_gpus = 1 # set number of GPUs
     # multiprocessing optimization setup
     use_multi_processing = True
     max_queue_size = 2 * n_gpus
@@ -157,7 +171,7 @@ def run_dsen2cr(predict_file=None, resume_file=None):
 
         predict_dsen2cr(predict_file, model, predict_data_type, base_out_path, input_data_folder, predict_filelist,
                         batch_size, clip_min, clip_max, crop_size, input_shape, use_cloud_mask, cloud_threshold,
-                        max_val_sar, scale)
+                        max_val_sar, scale, use_twin_mask=use_tmarl)
 
     else:
         # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% TRAIN %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -165,7 +179,7 @@ def run_dsen2cr(predict_file=None, resume_file=None):
         train_dsen2cr(model, model_name, base_out_path, resume_file, train_filelist, val_filelist, lr, log_step_freq,
                       shuffle_train, data_augmentation, random_crop, batch_size, scale, clip_max, clip_min, max_val_sar,
                       use_cloud_mask, cloud_threshold, crop_size, epochs_nr, initial_epoch, input_data_folder,
-                      input_shape, max_queue_size, use_multi_processing, workers)
+                      input_shape, max_queue_size, use_multi_processing, workers, use_twin_mask=use_tmarl)
 
 
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% MAIN %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

@@ -11,7 +11,7 @@ from tools.myCallbacks import CSV_NBatchLogger, NBatchLogger, TensorBoardWrapper
 def train_dsen2cr(model, model_name, base_out_path, resume_file, train_filelist, val_filelist, lr, log_step_freq,
                   shuffle_train, data_augmentation, random_crop, batch_size, scale, clip_max, clip_min, max_val_sar,
                   use_cloud_mask, cloud_threshold, crop_size, epochs_nr, initial_epoch, input_data_folder, input_shape,
-                  max_queue_size, use_multi_processing, workers):
+                  max_queue_size, use_multi_processing, workers, use_twin_mask=False):
     """Start or resume training of DSen2-CR model."""
 
     print('Training model name: {}'.format(model_name))
@@ -33,7 +33,7 @@ def train_dsen2cr(model, model_name, base_out_path, resume_file, train_filelist,
                                  monitor='val_loss',
                                  verbose=1,
                                  save_best_only=False,
-                                 save_weights_only=False,
+                                 save_weights_only=True,
                                  mode='auto')
 
     # instantiate csv logging callback
@@ -63,7 +63,9 @@ def train_dsen2cr(model, model_name, base_out_path, resume_file, train_filelist,
               'input_data_folder': input_data_folder,
               'use_cloud_mask': use_cloud_mask,
               'max_val_sar': max_val_sar,
-              'cloud_threshold': cloud_threshold}
+              'cloud_threshold': cloud_threshold,
+              'use_twin_mask': use_twin_mask # CONTRIBUTION: pass use_twin_mask variable
+    }
     val_tensorboard_generator = DataGenerator(val_filelist_tensorboard, **params)
 
     tensorboard = TensorBoardWrapper(val_tensorboard_generator, input_dim=input_shape, nb_steps=1,
@@ -89,7 +91,9 @@ def train_dsen2cr(model, model_name, base_out_path, resume_file, train_filelist,
               'input_data_folder': input_data_folder,
               'use_cloud_mask': use_cloud_mask,
               'max_val_sar': max_val_sar,
-              'cloud_threshold': cloud_threshold}
+              'cloud_threshold': cloud_threshold,
+              'use_twin_mask': use_twin_mask # CONTRIBUTION: pass use_twin_mask variable
+    }
     training_generator = DataGenerator(train_filelist, **params)
 
     params = {'input_dim': input_shape,
@@ -105,8 +109,9 @@ def train_dsen2cr(model, model_name, base_out_path, resume_file, train_filelist,
               'input_data_folder': input_data_folder,
               'use_cloud_mask': use_cloud_mask,
               'max_val_sar': max_val_sar,
-              'cloud_threshold': cloud_threshold
-              }
+              'cloud_threshold': cloud_threshold,
+              'use_twin_mask': use_twin_mask # CONTRIBUTION: pass use_twin_mask variable
+    }
 
     validation_generator = DataGenerator(val_filelist, **params)
 
@@ -116,7 +121,7 @@ def train_dsen2cr(model, model_name, base_out_path, resume_file, train_filelist,
 
     if resume_file is not None:
         print("Will resume from the weights in file {}".format(resume_file))
-        model.load_model(resume_file)
+        model.load_weights(resume_file)
 
     model.fit_generator(generator=training_generator,
                         validation_data=validation_generator,
@@ -132,7 +137,7 @@ def train_dsen2cr(model, model_name, base_out_path, resume_file, train_filelist,
 
 def predict_dsen2cr(predict_file, model, model_name, base_out_path, input_data_folder, predict_filelist, batch_size,
                     clip_min, clip_max, crop_size, input_shape, use_cloud_mask, cloud_threshold, max_val_sar,
-                    scale):
+                    scale, use_twin_mask=False):
     print("Predicting using file: {}".format(predict_file))
     print("Using this model: {}".format(model_name))
 
@@ -144,7 +149,7 @@ def predict_dsen2cr(predict_file, model, model_name, base_out_path, input_data_f
 
     print("Initializing generator for prediction and evaluation")
     params = {'input_dim': input_shape,
-              'batch_size': 1,
+              'batch_size': batch_size,
               'shuffle': False,
               'scale': scale,
               'include_target': True,
@@ -156,7 +161,9 @@ def predict_dsen2cr(predict_file, model, model_name, base_out_path, input_data_f
               'input_data_folder': input_data_folder,
               'use_cloud_mask': use_cloud_mask,
               'max_val_sar': max_val_sar,
-              'cloud_threshold': cloud_threshold}
+              'cloud_threshold': cloud_threshold,
+              'use_twin_mask': use_twin_mask # CONTRIBUTION: pass use_twin_mask variable
+    }
     predict_generator = DataGenerator(predict_filelist, **params)
 
     eval_csv_name = out_path_predict + 'eval.csv'
