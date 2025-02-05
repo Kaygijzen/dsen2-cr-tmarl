@@ -23,7 +23,7 @@ def run_dsen2cr(predict_file=None, resume_file=None):
     # TODO implement external hyperparam config file
     # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Setup model %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-    model_name = 'DSen2-CR_001'  # model name for training
+    model_name = 'DSen2-CR_tmarl_alpha=0.5'  # model name for training
 
     # model parameters
     num_layers = 16  # B value in paper
@@ -43,7 +43,7 @@ def run_dsen2cr(predict_file=None, resume_file=None):
     # relative weight for the cloud and cloud-shadow regions:
     #   - alpha < 0.5 -> cloud-shadow regions are prioritized
     #   - alpha > 0.5 -> cloud regions are prioritized
-    tmarl_alpha = 0.8
+    tmarl_alpha = 0.5
     tmarl_lambda = 1 # weight for the regularization term
 
     # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Setup data processing param %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
