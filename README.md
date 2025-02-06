@@ -1,3 +1,16 @@
+# Contributions to forked repository
+
+This implementation is based on a fork of an existing repository, which can be found at [link](https://github.com/ameraner/dsen2-cr). The original repository as the foundation for our contributions. Any contributions are marked with comments:
+
+> \# CONTRIBUTION: ...
+
+In this repository, we introduce the *Twin Mask Adaptive Regularized Loss* (TMARL) function, an adaptation of the *Cloud Adaptive Regularized Loss* (CARL) function. In contrast to CARL, the TMARL function separately handles cloud and cloud-shadow masks. Furthermore, the emphasis TMARL gives to either the cloud mask or the cloud-shadow mask is parameterized; therefore it allows for a more nuanced optimization of the cloud removal network DSen2-CR. Our results indicate that TMARL improves reproduction accuracy, with $\alpha=0.8$ yielding the best overall performance. However, in cases of heavy cloud cover, CARL remains superior by minimizing hallucinated artifacts.
+
+For more details on the methodology and results, please refer to our paper: [Cloud removal using the DSen2-CR model, trained with Twin
+Mask Adaptive Regularized Loss](./paper.pdf).
+
+The following sections are from the original repository.
+
 # Cloud removal in Sentinel-2 imagery using a deep residual neural network and SAR-optical data fusion
 [![BPA](https://img.shields.io/badge/Winner-ISPRS%20U.V.%20Helava%20Award%202020--2021-brightgreen)](https://www.isprs.org/society/awards/helava/2020_2021award.aspx)
 [![BPA](https://img.shields.io/badge/Winner-ISPRS%20JPRS%20Best%20Paper%20Award%202020-brightgreen)](https://www.journals.elsevier.com/isprs-journal-of-photogrammetry-and-remote-sensing/news/the-u-v-helava-award-best-paper-volumes-159-170-2020)
